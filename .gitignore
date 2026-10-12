@@ -1,3 +1,11 @@
 .dart_tool/
 build/
 .metadata
+
+__pycache__
+
+# Ignora dados brutos e processados do ETL
+data/
+*.csv
+*.json
+*.sqlite
