@@ -9,3 +9,22 @@ data/
 *.csv
 *.json
 *.sqlite
+*.sqlite3
+
+# Dependências
+node_modules/
+venv/
+__pycache__/
+
+# Compilados/Build
+dist/
+build/
+out/
+
+# Logs e Dados Locais
+*.log
+logs/
+
+# Segredos
+*.pem
+*.key
