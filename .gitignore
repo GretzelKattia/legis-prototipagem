@@ -11,6 +11,13 @@ data/
 *.sqlite
 *.sqlite3
 
+# JSONs que fazem parte da configuração das plataformas Flutter
+!frontend/.metadata
+!frontend/web/manifest.json
+!frontend/ios/Runner/Assets.xcassets/AppIcon.appiconset/Contents.json
+!frontend/ios/Runner/Assets.xcassets/LaunchImage.imageset/Contents.json
+!frontend/macos/Runner/Assets.xcassets/AppIcon.appiconset/Contents.json
+
 # Dependências
 node_modules/
 venv/
@@ -28,3 +35,29 @@ logs/
 # Segredos
 *.pem
 *.key
+
+# Segredos e configuração local
+.env
+.env.*
+!.env.example
+
+# Arquivos locais/gerados do frontend Flutter
+frontend/.idea/
+frontend/*.iml
+frontend/.flutter-plugins
+frontend/.flutter-plugins-dependencies
+frontend/.pub-cache/
+frontend/.pub/
+frontend/coverage/
+frontend/.widget_preview/
+frontend/android/.gradle/
+frontend/android/local.properties
+frontend/ios/Flutter/Generated.xcconfig
+frontend/ios/Flutter/flutter_export_environment.sh
+frontend/ios/Flutter/ephemeral/
+frontend/macos/Flutter/ephemeral/
+frontend/linux/flutter/ephemeral/
+frontend/windows/flutter/ephemeral/
+
+# Arquivo compactado solto em lib, sem referência pelo app
+frontend/lib/main.zip
