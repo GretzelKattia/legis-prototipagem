@@ -1,0 +1,325 @@
+type: collection.insomnia.rest/5.0
+schema_version: "5.1"
+name: LEGIS — Fase 4
+meta:
+  id: wrk_e0db86e400d647deb3e2615196d91c93
+  created: 1790736687986
+  modified: 1790736687986
+  description: ""
+collection:
+  - url: "{{ _.base_url }}/favoritos"
+    name: Criar favorito
+    meta:
+      id: req_02de47db8d7044e68054bd141eb53746
+      created: 1790717400000
+      modified: 1790717400000
+      isPrivate: false
+      description: ""
+      sortKey: 8
+    method: POST
+    body:
+      mimeType: application/json
+      text: |-
+        {
+          "proposicao_id": {{ _.proposicao_id }}
+        }
+    headers:
+      - name: Content-Type
+        value: application/json
+      - name: X-User-Id
+        value: "{{ _.user_id }}"
+    settings:
+      renderRequestBody: true
+      encodeUrl: true
+      followRedirects: global
+      cookies:
+        send: true
+        store: true
+      rebuildPath: true
+  - url: "{{ _.base_url }}/proposicoes/{{ _.proposicao_id }}/tramitacoes"
+    name: Tramitações
+    meta:
+      id: req_089b8d84488141dfa1d8dc04ff1700a9
+      created: 1790717400000
+      modified: 1790737317270
+      isPrivate: false
+      description: ""
+      sortKey: 5
+    method: GET
+    settings:
+      renderRequestBody: true
+      encodeUrl: true
+      followRedirects: global
+      cookies:
+        send: true
+        store: true
+      rebuildPath: true
+  - url: "{{ _.base_url }}/favoritos"
+    name: Listar favoritos
+    meta:
+      id: req_2fc7e8bb26604bd7b92af95ed31e596b
+      created: 1790717400000
+      modified: 1790717400000
+      isPrivate: false
+      description: ""
+      sortKey: 7
+    method: GET
+    headers:
+      - name: X-User-Id
+        value: "{{ _.user_id }}"
+    settings:
+      renderRequestBody: true
+      encodeUrl: true
+      followRedirects: global
+      cookies:
+        send: true
+        store: true
+      rebuildPath: true
+  - url: "{{ _.base_url }}/proposicoes/{{ _.proposicao_id }}/linha-do-tempo"
+    name: Linha do tempo
+    meta:
+      id: req_8dcfa3507649433385ebe84f11a82754
+      created: 1790717400000
+      modified: 1790717400000
+      isPrivate: false
+      description: ""
+      sortKey: 6
+    method: GET
+    settings:
+      renderRequestBody: true
+      encodeUrl: true
+      followRedirects: global
+      cookies:
+        send: true
+        store: true
+      rebuildPath: true
+  - url: "{{ _.base_url }}/proposicoes/{{ _.proposicao_id }}/autores"
+    name: Autores
+    meta:
+      id: req_91f0b51b01fb42f58c452fd0f963746d
+      created: 1790717400000
+      modified: 1790717400000
+      isPrivate: false
+      description: ""
+      sortKey: 4
+    method: GET
+    settings:
+      renderRequestBody: true
+      encodeUrl: true
+      followRedirects: global
+      cookies:
+        send: true
+        store: true
+      rebuildPath: true
+  - url: "{{ _.base_url }}/etl/sincronizar"
+    name: Sincronizar ETL (admin/dev)
+    meta:
+      id: req_98f7092ad76b4438ba3cb04155dba8db
+      created: 1790717400000
+      modified: 1790717400000
+      isPrivate: false
+      description: ""
+      sortKey: 10
+    method: POST
+    headers:
+      - name: X-Admin-Token
+        value: "{{ _.admin_token }}"
+    settings:
+      renderRequestBody: true
+      encodeUrl: true
+      followRedirects: global
+      cookies:
+        send: true
+        store: true
+      rebuildPath: true
+  - url: "{{ _.base_url }}/health"
+    name: Health
+    meta:
+      id: req_a46b03c7617d4a70b3a28e2cd86d3620
+      created: 1790717400000
+      modified: 1790906614964
+      isPrivate: false
+      description: ""
+      sortKey: 1
+    method: GET
+    settings:
+      renderRequestBody: true
+      encodeUrl: true
+      followRedirects: global
+      cookies:
+        send: true
+        store: true
+      rebuildPath: true
+  - url: "{{ _.base_url }}/proposicoes?tipo=PL&ano=2021&page=1&per_page=20"
+    name: Listar proposições
+    meta:
+      id: req_cec21e5371d74045a4de1550ae153c7d
+      created: 1790717400000
+      modified: 1790717400000
+      isPrivate: false
+      description: ""
+      sortKey: 2
+    method: GET
+    settings:
+      renderRequestBody: true
+      encodeUrl: true
+      followRedirects: global
+      cookies:
+        send: true
+        store: true
+      rebuildPath: true
+  - url: "{{ _.base_url }}/favoritos/{{ _.proposicao_id }}"
+    name: Excluir favorito
+    meta:
+      id: req_d1370f10b2a54b57b9466fe6eddd5879
+      created: 1790717400000
+      modified: 1790717400000
+      isPrivate: false
+      description: ""
+      sortKey: 9
+    method: DELETE
+    headers:
+      - name: X-User-Id
+        value: "{{ _.user_id }}"
+    settings:
+      renderRequestBody: true
+      encodeUrl: true
+      followRedirects: global
+      cookies:
+        send: true
+        store: true
+      rebuildPath: true
+  - url: "{{ _.base_url }}/proposicoes/{{ _.proposicao_id }}"
+    name: Detalhe
+    meta:
+      id: req_f2b05c36896742fa8647454354d7c2c3
+      created: 1790717400000
+      modified: 1790717400000
+      isPrivate: false
+      description: ""
+      sortKey: 3
+    method: GET
+    settings:
+      renderRequestBody: true
+      encodeUrl: true
+      followRedirects: global
+      cookies:
+        send: true
+        store: true
+      rebuildPath: true
+  - url: http://127.0.0.1:8000/proposicoes/540979
+    name: http://127.0.0.1:8000/proposicoes/540979
+    meta:
+      id: req_a5ef286a2f2e4df59b41e07b970dd437
+      created: 1790737333241
+      modified: 1790906636782
+      isPrivate: false
+      description: ""
+      sortKey: -1790737333241
+    method: GET
+    settings:
+      renderRequestBody: true
+      encodeUrl: true
+      followRedirects: global
+      cookies:
+        send: true
+        store: true
+      rebuildPath: true
+  - url: ""
+    name: New Request
+    meta:
+      id: req_e268bceb3e9e4c5baaa900233fbf2009
+      created: 1791763384869
+      modified: 1791763388388
+      isPrivate: false
+      description: ""
+      sortKey: -1791763384869
+    method: GET
+    settings:
+      renderRequestBody: true
+      encodeUrl: true
+      followRedirects: global
+      cookies:
+        send: true
+        store: true
+      rebuildPath: true
+  - url: http://localhost:8000/proposicoes
+    name: http://localhost:8000/proposicoes
+    meta:
+      id: req_2a0694b9abe54637aae3739fe58fb6bb
+      created: 1791763388175
+      modified: 1791763474643
+      isPrivate: false
+      description: ""
+      sortKey: -1791763388175
+    method: GET
+    parameters:
+      - name: status
+        value: Fase Inicial
+        disabled: false
+      - name: page
+        value: "1"
+        disabled: false
+      - name: per_page
+        value: "20"
+        disabled: false
+    headers:
+      - name: accept
+        value: "*/*"
+    settings:
+      renderRequestBody: true
+      encodeUrl: true
+      followRedirects: global
+      cookies:
+        send: true
+        store: true
+      rebuildPath: true
+  - url: http://localhost:8000/proposicoes
+    name: http://localhost:8000/proposicoes
+    meta:
+      id: req_321c3233fc1741f8b77056377a44e7f6
+      created: 1791763474401
+      modified: 1791763475578
+      isPrivate: false
+      description: ""
+      sortKey: -1791763474401
+    method: GET
+    parameters:
+      - name: status
+        value: FASE_INICIAL
+        disabled: false
+      - name: page
+        value: "1"
+        disabled: false
+      - name: per_page
+        value: "20"
+        disabled: false
+    headers:
+      - name: accept
+        value: "*/*"
+    settings:
+      renderRequestBody: true
+      encodeUrl: true
+      followRedirects: global
+      cookies:
+        send: true
+        store: true
+      rebuildPath: true
+cookieJar:
+  name: Default Jar
+  meta:
+    id: jar_03a43b0348165171cbacb9ba96e6870d6bf8d2c0
+    created: 1790736688183
+    modified: 1790736688183
+environments:
+  name: Base Environment
+  meta:
+    id: env_b300a97983fc4ca6a61b22356068758b
+    created: 1790717400000
+    modified: 1790717400000
+    isPrivate: false
+  data:
+    base_url: http://127.0.0.1:8000
+    proposicao_id: 540979
+    user_id: 1
+    admin_token: dev-admin-token

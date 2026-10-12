@@ -102,6 +102,15 @@ uvicorn main:app --reload --port 8000
 
 4. A documentação interativa da API (Swagger) estará disponível em: `http://localhost:8000/docs`.
 
+
+#### Testando a API
+
+A coleção de requisições do Insomnia está disponível na pasta [`docs/insomnia/`](./docs/insomnia/).
+Para importar:
+1. Abra o Insomnia.
+2. Vá em **Preferences** > **Data** > **Import Data** > **From File**.
+3. Selecione o arquivo `Insomnia_Legis_API.json`.
+
 ---
 
 ### Passo 4: Inicialização do Frontend (Flutter)
