@@ -1,0 +1,43 @@
+{
+  "api": {
+    "base_url": "https://dadosabertos.camara.leg.br/api/v2",
+    "timeout_seconds": 30,
+    "max_retries": 3,
+    "backoff_seconds": 1,
+    "page_size": 10,
+    "max_pages": 1
+  },
+  "filters": [
+    {
+      "siglaTipo": "PL",
+      "periodo_recente_meses": 12
+    },
+    {
+      "siglaTipo": "PLP",
+      "periodo_recente_meses": 12
+    },
+    {
+      "siglaTipo": "PEC",
+      "periodo_recente_meses": 12
+    }
+  ],
+  "status_internos_incluidos": [
+    "APROVADA",
+    "TRANSFORMADA_EM_NORMA",
+    "EM_TRAMITACAO",
+    "PRONTA_PARA_PAUTA",
+    "AGUARDANDO_SENADO"
+  ],
+  "database": {
+    "host": "127.0.0.1",
+    "port": 3306,
+    "user": "root",
+    "password": "root",
+    "database": "legis"
+  },
+  "paths": {
+    "status_log": "etl/data/status.jsonl",
+    "raw_output": "etl/data/raw/extraction.json",
+    "transformed_output": "etl/data/transformed.json"
+  }
+}

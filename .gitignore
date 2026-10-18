@@ -7,7 +7,7 @@ __pycache__
 # Ignora dados brutos e processados do ETL
 data/
 *.csv
-*.json
+# *.json
 *.sqlite
 *.sqlite3
 
@@ -37,8 +37,8 @@ logs/
 *.key
 
 # Segredos e configuração local
-.env
-.env.*
+# .env
+# .env.*
 !.env.example
 
 # Arquivos locais/gerados do frontend Flutter
