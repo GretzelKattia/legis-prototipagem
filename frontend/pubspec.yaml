@@ -1,17 +1,21 @@
 name: legis_frontend
-description: Interface mobile do LEGIS integrada exclusivamente à API FastAPI.
+description: Frontend Flutter do LEGIS - Fase 5.
 publish_to: 'none'
-version: 0.1.0+1
+version: 1.0.0+1
 
 environment:
   sdk: '>=3.3.0 <4.0.0'
-  flutter: '>=3.22.0'
 
 dependencies:
   flutter:
     sdk: flutter
+  cupertino_icons: ^1.0.8
   http: ^1.2.2
-  intl: ^0.20.3
+  flutter_secure_storage: ^9.2.4
+  provider: ^6.1.2
+  shared_preferences: ^2.3.2
+  intl: ^0.19.0
+  share_plus: ^10.1.4
 
 dev_dependencies:
   flutter_test:
@@ -20,3 +24,7 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/images/legis_logo.png
+    - assets/images/legis_wordmark.png
+    - assets/images/legis_wordmark_light.png
