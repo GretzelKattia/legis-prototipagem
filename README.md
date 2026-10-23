@@ -29,17 +29,15 @@ Certifique-se de ter instalado em sua máquina:
 
 ### Passo 1: Configuração do Banco de Dados (MySQL)
 
-O sistema requer um banco de dados limpo para receber a carga do ETL.
+O ETL precisa do schema e da tabela de controle de execuções no MySQL. No MySQL Workbench, abra e execute, na ordem, cada migration abaixo a partir da raiz do repositório:
 
-1. Abra o MySQL Workbench e execute o script de criação do banco:
+1. `database/migrations/001_create_schema.sql`
+2. `database/migrations/002_add_indexes.sql`
+3. `database/migrations/003_add_etl_metadata.sql`
+4. `database/migrations/004_tramitacao_unique_nonnull.sql`
+5. `database/migrations/005_legal_evidence.sql`
 
-```sql
-CREATE DATABASE legis;
-USE legis;
-
-```
-
-2. *(Opcional, mas recomendado)* Insira um usuário administrador padrão para habilitar a funcionalidade de "Favoritar" projetos de lei no Frontend:
+As migrations criam o banco `legis` e as tabelas necessárias. *(Opcional, mas recomendado)* Depois de executá-las, insira um usuário administrador padrão para habilitar a funcionalidade de "Favoritar" projetos de lei no Frontend:
 
 ```sql
 INSERT INTO usuario (id_usuario, nome, email, senha_hash, criado_em)
@@ -53,37 +51,59 @@ VALUES (1, 'Administrador', 'admin@tcc.local', 'senha123', NOW());
 
 O robô ETL é responsável por buscar os dados oficiais na API da Câmara dos Deputados, transformar e carregar no banco de dados local.
 
-1. Navegue até a pasta do ETL e ative o ambiente virtual:
+1. Execute os comandos a partir da raiz do repositório. Crie o ambiente virtual **uma única vez**; se a pasta `.venv` já existir, não execute `venv` novamente.
+
+No **Git Bash**:
 
 ```bash
-# Windows
-cd LEGIS
 python -m venv .venv
-.venv\Scripts\activate
+./.venv/Scripts/python.exe -m pip install --upgrade pip
+./.venv/Scripts/python.exe -m pip install -r backend/requirements.txt
+./.venv/Scripts/python.exe -c "import requests, mysql.connector; print('Dependências OK')"
+```
 
-# Linux/Mac
-cd LEGIS
+No **PowerShell**, os comandos equivalentes são:
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install --upgrade pip
+.\.venv\Scripts\python.exe -m pip install -r backend\requirements.txt
+.\.venv\Scripts\python.exe -c "import requests, mysql.connector; print('Dependências OK')"
+```
+
+No **Linux/macOS**:
+
+```bash
 python3 -m venv .venv
-source .venv/bin/activate
-
+./.venv/bin/python -m pip install --upgrade pip
+./.venv/bin/python -m pip install -r backend/requirements.txt
+./.venv/bin/python -c "import requests, mysql.connector; print('Dependências OK')"
 ```
 
-2. Instale as dependências:
+Use apenas os comandos do terminal que está aberto. Em Git Bash, use `/` nos caminhos; comandos PowerShell como `.\.venv\Scripts\Activate.ps1` não são comandos Bash. Os exemplos chamam diretamente o Python da `.venv`, então não é necessário ativá-la. Se ela já existir, pule a linha `python -m venv .venv`.
+
+2. **Modo Expresso (Recomendado para Testes):** Para evitar que o robô baixe o histórico de anos inteiros, configure o arquivo `etl/config.json` limitando as páginas e o tempo (ex: `"max_pages": 1`, `"periodo_recente_meses": 1`).
+3. Com o terminal ainda na raiz do repositório, execute o pipeline:
+
+Git Bash:
 
 ```bash
-pip install -r requirements.txt
-
+./.venv/Scripts/python.exe -m etl.pipeline
 ```
 
-3. **Modo Expresso (Recomendado para Testes):** Para evitar que o robô baixe o histórico de anos inteiros, configure o arquivo `LEGIS/etl/config.json` limitando as páginas e o tempo (ex: `"max_pages": 1`, `"periodo_recente_meses": 1`).
-4. Execute o pipeline:
+PowerShell:
+
+```powershell
+.\.venv\Scripts\python.exe -m etl.pipeline
+```
+
+Linux/macOS:
 
 ```bash
-python -m etl.pipeline
-
+./.venv/bin/python -m etl.pipeline
 ```
 
-Aguarde a finalização. O terminal exibirá um resumo JSON contendo o total de registros extraídos, transformados e carregados.
+Aguarde a finalização. O terminal exibirá um resumo JSON contendo o total de registros extraídos, transformados e carregados. A execução normal requer conexão com o MySQL, schema criado e credenciais válidas. Para executar a extração e transformação sem gravar no MySQL, acrescente `--skip-load` ao comando do seu terminal; esse modo ainda precisa de acesso à internet para consultar a API da Câmara.
 
 ---
 
@@ -91,16 +111,27 @@ Aguarde a finalização. O terminal exibirá um resumo JSON contendo o total de 
 
 A API serve os dados do MySQL para a aplicação Flutter, aplicando regras de negócio e filtros de busca.
 
-1. Mantenha o ambiente virtual do Python ativado (ou ative-o na pasta do backend).
-2. Instale as dependências da API (caso estejam em um `requirements.txt` separado).
-3. Inicie o servidor local na porta padrão (8000):
+1. Com o terminal na raiz do repositório, inicie o servidor local na porta padrão (8000):
+
+**Git Bash:**
 
 ```bash
-uvicorn main:app --reload --port 8000
+DATABASE_URL="mysql+mysqlconnector://root:root@localhost:3306/legis" uvicorn app.main:app --app-dir backend --reload --port 8000
 
+
+PowerShell:
+
+```powershell
+$env:DATABASE_URL="mysql+mysqlconnector://root:root@localhost:3306/legis"; .\.venv\Scripts\python.exe -m uvicorn app.main:app --app-dir backend --reload --port 8000
 ```
 
-4. A documentação interativa da API (Swagger) estará disponível em: `http://localhost:8000/docs`.
+Linux/macOS:
+
+```bash
+DATABASE_URL="mysql+mysqlconnector://root:root@localhost:3306/legis" ./.venv/bin/python -m uvicorn app.main:app --app-dir backend --reload --port 8000
+```
+
+2. A documentação interativa da API (Swagger) estará disponível em: `http://localhost:8000/docs`.
 
 
 #### Testando a API
