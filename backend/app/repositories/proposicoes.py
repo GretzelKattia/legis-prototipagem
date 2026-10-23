@@ -1,4 +1,4 @@
-from sqlalchemy import func, or_, select
+from sqlalchemy import exists, func, or_, select
 from sqlalchemy.orm import Session, joinedload
 from ..models import Autor, Favorito, ProjetoAutor, ProjetoLei, Tramitacao
 
@@ -9,8 +9,16 @@ class ProposicaoRepository:
     ):
         stmt = select(ProjetoLei)
         if q:
+            author_match = exists(
+                select(ProjetoAutor.id_projeto)
+                .join(Autor, Autor.id_autor == ProjetoAutor.id_autor)
+                .where(
+                    ProjetoAutor.id_projeto == ProjetoLei.id_projeto,
+                    Autor.nome.ilike(f"%{q}%"),
+                )
+            )
             stmt = stmt.where(
-                or_(ProjetoLei.ementa.ilike(f"%{q}%"), ProjetoLei.numero == q)
+                or_(ProjetoLei.ementa.ilike(f"%{q}%"), ProjetoLei.numero == q, author_match)
             )
         if tipo:
             stmt = stmt.where(ProjetoLei.sigla_tipo == tipo)

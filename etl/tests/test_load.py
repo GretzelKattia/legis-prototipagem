@@ -139,3 +139,31 @@ def test_load_failure_is_not_masked_if_error_status_cannot_be_saved(monkeypatch)
     assert "secondary status-write failure" in " ".join(getattr(caught.value, "__notes__", []))
     assert "rollback" in events
     assert "commit" not in events
+
+
+def test_new_project_notifications_use_real_record_and_saved_user_preference():
+    import json
+    record = {**project_record(), "ementa": "Texto oficial da ementa"}
+    cursor = CursorDouble([
+        (7, json.dumps({"pref_novos_projetos": True})),
+        (8, json.dumps({"pref_novos_projetos": False})),
+    ])
+    MySQLLoader._notify_new_project(cursor, record)
+    inserts = [(sql, params) for sql, params in cursor.executed if "INSERT IGNORE INTO notificacao" in sql]
+    assert len(inserts) == 1
+    assert inserts[0][1][0] == 7
+    assert inserts[0][1][1] == record["id_projeto"]
+    assert inserts[0][1][3] == record["ementa"]
+
+
+def test_favorite_tramitation_notifications_use_only_subscribed_user_and_official_description():
+    import json
+    cursor = CursorDouble([
+        (7, json.dumps({"pref_atualizacoes": True})),
+        (8, json.dumps({"pref_favoritos": False})),
+    ])
+    record = project_record()
+    MySQLLoader._notify_new_tramitation(cursor, record, {"descricao_tramitacao": "Evento oficial"}, 99)
+    inserts = [(sql, params) for sql, params in cursor.executed if "INSERT IGNORE INTO notificacao" in sql]
+    assert len(inserts) == 1
+    assert inserts[0][1] == (7, record["id_projeto"], 99, f"Atualização: PL {record['numero']}/{record['ano']}", "Evento oficial")

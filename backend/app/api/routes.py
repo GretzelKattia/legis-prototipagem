@@ -13,12 +13,13 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 from ..config import get_settings
 from ..db import get_db
-from ..models import EtlExecucao, Usuario, VerificacaoVigencia
+from ..models import EtlExecucao, Notificacao, SessaoUsuario, Usuario, VerificacaoVigencia
 from ..repositories import FavoritoRepository, ProposicaoRepository
 from ..schemas.api import *
 from ..services.etl import is_running, run_sync
 from ..services.legal_evidence import fetch_verified_evidence
 from ..services.presentation import card, tram
+from ..services.auth import find_session_user, hash_password, issue_session, verify_password
 
 router = APIRouter()
 repo, fav_repo = ProposicaoRepository(), FavoritoRepository()
@@ -33,18 +34,166 @@ def pagination(page: int, per_page: int, total: int):
     )
 
 
+def get_current_user(
+    authorization: str | None = Header(default=None, alias="Authorization"),
+    db: Session = Depends(get_db),
+):
+    if authorization and authorization.lower().startswith("bearer "):
+        token = authorization[7:].strip()
+        user, _ = find_session_user(db, token)
+        if user:
+            return user
+    raise HTTPException(401, "Sessão inválida ou expirada", headers={"WWW-Authenticate": "Bearer"})
+
+
 def get_user_id(
+    authorization: str | None = Header(default=None, alias="Authorization"),
     x_user_id: int | None = Header(default=None, alias="X-User-Id"),
     db: Session = Depends(get_db),
 ):
-    value = get_settings().default_user_id if x_user_id is None else x_user_id
-    if value <= 0:
-        raise HTTPException(400, "X-User-Id deve ser positivo")
-    # This confirms only that the selected ID exists; the header is still not
-    # authentication and must never be trusted as identity in production.
-    if db.get(Usuario, value) is None:
-        raise HTTPException(404, "Usuário não encontrado")
-    return value
+    # Legacy test-only adapter; client-supplied IDs are never trusted outside tests.
+    if get_settings().environment == "test":
+        value = get_settings().default_user_id if x_user_id is None else x_user_id
+        if value <= 0:
+            raise HTTPException(400, "X-User-Id deve ser positivo")
+        if db.get(Usuario, value) is None:
+            raise HTTPException(404, "Usuário não encontrado")
+        return value
+    if authorization and authorization.lower().startswith("bearer "):
+        user, _ = find_session_user(db, authorization[7:].strip())
+        if user:
+            return user.id_usuario
+    raise HTTPException(401, "Sessão inválida ou expirada", headers={"WWW-Authenticate": "Bearer"})
+
+
+def _user_out(user: Usuario) -> dict:
+    return {"id": user.id_usuario, "nome": user.nome, "email": user.email}
+
+
+@router.post("/auth/register", response_model=AuthOut, status_code=201)
+def register(body: RegisterIn, db: Session = Depends(get_db)):
+    email = body.email.strip().lower()
+    if "@" not in email or "." not in email.rsplit("@", 1)[-1]:
+        raise HTTPException(422, "E-mail inválido")
+    if db.scalar(select(Usuario).where(Usuario.email == email)):
+        raise HTTPException(409, "Já existe uma conta com este e-mail")
+    user = Usuario(nome=body.nome.strip(), email=email, senha_hash=hash_password(body.senha), preferencias_json=dict(DEFAULT_PREFERENCES))
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    token, expires = issue_session(db, user)
+    return {"access_token": token, "expires_at": expires, "usuario": _user_out(user)}
+
+
+@router.post("/auth/login", response_model=AuthOut)
+def login(body: CredentialsIn, db: Session = Depends(get_db)):
+    email = body.email.strip().lower()
+    user = db.scalar(select(Usuario).where(Usuario.email == email))
+    if not user or not verify_password(body.senha, user.senha_hash):
+        raise HTTPException(401, "E-mail ou senha inválidos")
+    token, expires = issue_session(db, user)
+    return {"access_token": token, "expires_at": expires, "usuario": _user_out(user)}
+
+
+@router.get("/auth/me", response_model=UserOut)
+def current_profile(user: Usuario = Depends(get_current_user)):
+    return _user_out(user)
+
+
+@router.patch("/auth/me", response_model=UserOut)
+def update_profile(body: ProfileIn, user: Usuario = Depends(get_current_user), db: Session = Depends(get_db)):
+    email = body.email.strip().lower()
+    if "@" not in email or "." not in email.rsplit("@", 1)[-1]:
+        raise HTTPException(422, "E-mail inválido")
+    duplicate = db.scalar(select(Usuario).where(Usuario.email == email, Usuario.id_usuario != user.id_usuario))
+    if duplicate:
+        raise HTTPException(409, "Já existe uma conta com este e-mail")
+    user.nome, user.email = body.nome.strip(), email
+    db.commit()
+    db.refresh(user)
+    return _user_out(user)
+
+
+@router.post("/auth/change-password", status_code=204)
+def change_password(
+    body: PasswordChangeIn,
+    user: Usuario = Depends(get_current_user),
+    authorization: str | None = Header(default=None, alias="Authorization"),
+    db: Session = Depends(get_db),
+):
+    if not verify_password(body.senha_atual, user.senha_hash):
+        raise HTTPException(400, "Senha atual incorreta")
+    user.senha_hash = hash_password(body.nova_senha)
+    current_hash = __import__("hashlib").sha256(authorization[7:].strip().encode()).hexdigest()
+    db.query(SessaoUsuario).filter(
+        SessaoUsuario.id_usuario == user.id_usuario,
+        SessaoUsuario.token_hash != current_hash,
+    ).delete(synchronize_session=False)
+    db.commit()
+
+
+@router.post("/auth/logout", status_code=204)
+def logout(authorization: str | None = Header(default=None, alias="Authorization"), db: Session = Depends(get_db)):
+    if authorization and authorization.lower().startswith("bearer "):
+        token_hash = __import__("hashlib").sha256(authorization[7:].strip().encode()).hexdigest()
+        session = db.get(SessaoUsuario, token_hash)
+        if session:
+            db.delete(session)
+            db.commit()
+
+
+DEFAULT_PREFERENCES = {
+    "pref_novos_projetos": True,
+    "pref_atualizacoes": True,
+    "pref_votacoes": False,
+    "pref_outras": False,
+}
+PREFERENCE_KEYS = set(DEFAULT_PREFERENCES)
+UNSUPPORTED_PREFERENCES = {"pref_votacoes", "pref_outras"}
+
+
+@router.get("/usuarios/me/preferencias")
+def get_preferences(user: Usuario = Depends(get_current_user)):
+    saved = user.preferencias_json or {}
+    compatible = {key: value for key, value in saved.items() if key in PREFERENCE_KEYS}
+    return {"preferencias": {**DEFAULT_PREFERENCES, **compatible}}
+
+
+@router.patch("/usuarios/me/preferencias")
+def patch_preferences(body: PreferencesIn, user: Usuario = Depends(get_current_user), db: Session = Depends(get_db)):
+    unknown = set(body.preferencias) - PREFERENCE_KEYS
+    if unknown:
+        raise HTTPException(422, f"Preferências desconhecidas: {', '.join(sorted(unknown))}")
+    values = {
+        key: value for key, value in (user.preferencias_json or {}).items()
+        if key in PREFERENCE_KEYS
+    }
+    if any(body.preferencias.get(key) is True for key in UNSUPPORTED_PREFERENCES):
+        raise HTTPException(422, "Notificações de votação e comunicados gerais não são fornecidas pelo ETL atual")
+    values = {**DEFAULT_PREFERENCES, **values}
+    values.update(body.preferencias)
+    user.preferencias_json = values
+    db.commit()
+    return {"preferencias": values}
+
+
+@router.get("/notificacoes")
+def list_notifications(page: int = Query(1, ge=1), per_page: int = Query(20, ge=1, le=100), user: Usuario = Depends(get_current_user), db: Session = Depends(get_db)):
+    base = select(Notificacao).where(Notificacao.id_usuario == user.id_usuario)
+    total = db.scalar(select(__import__("sqlalchemy").func.count()).select_from(base.subquery())) or 0
+    rows = db.scalars(base.order_by(Notificacao.criada_em.desc(), Notificacao.id_notificacao.desc()).offset((page - 1) * per_page).limit(per_page)).all()
+    return {"items": [{"id": n.id_notificacao, "proposicao_id": n.id_projeto, "tipo_evento": n.tipo_evento, "titulo": n.titulo, "descricao": n.descricao, "criada_em": n.criada_em, "lida_em": n.lida_em} for n in rows], "meta": pagination(page, per_page, total)}
+
+
+@router.patch("/notificacoes/{notification_id}/lida", status_code=204)
+def mark_notification_read(notification_id: int, user: Usuario = Depends(get_current_user), db: Session = Depends(get_db)):
+    item = db.get(Notificacao, notification_id)
+    if not item or item.id_usuario != user.id_usuario:
+        raise HTTPException(404, "Notificação não encontrada")
+    if item.lida_em is None:
+        from datetime import datetime
+        item.lida_em = datetime.utcnow()
+        db.commit()
 
 
 def require_admin(

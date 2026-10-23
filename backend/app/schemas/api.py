@@ -132,3 +132,49 @@ class VigencyReviewOut(BaseModel):
     resposta_http: int
     conteudo_sha256: str
     verificada_em: datetime
+
+
+class CredentialsIn(BaseModel):
+    email: str = Field(min_length=5, max_length=255)
+    senha: str = Field(min_length=10, max_length=128)
+
+
+class RegisterIn(CredentialsIn):
+    nome: str = Field(min_length=3, max_length=150)
+
+
+class UserOut(BaseModel):
+    id: int
+    nome: str
+    email: str
+
+
+class AuthOut(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    expires_at: datetime
+    usuario: UserOut
+
+
+class ProfileIn(BaseModel):
+    nome: str = Field(min_length=3, max_length=150)
+    email: str = Field(min_length=5, max_length=255)
+
+
+class PasswordChangeIn(BaseModel):
+    senha_atual: str = Field(min_length=1, max_length=128)
+    nova_senha: str = Field(min_length=10, max_length=128)
+
+
+class PreferencesIn(BaseModel):
+    preferencias: dict[str, bool]
+
+
+class NotificationOut(BaseModel):
+    id: int
+    proposicao_id: int
+    tipo_evento: str
+    titulo: str
+    descricao: str | None
+    criada_em: datetime
+    lida_em: datetime | None

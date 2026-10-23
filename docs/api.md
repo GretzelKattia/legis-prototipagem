@@ -209,3 +209,16 @@ O retorno de `GET /health` inclui:
   "fonte_dados": "mysql_local"
 }
 ```
+
+## Conta, preferências e notificações (migration 006)
+
+As rotas a seguir exigem `Authorization: Bearer <access_token>` e usam a conta vinculada à sessão persistida no banco:
+
+- `POST /auth/register` (`nome`, `email`, `senha`) e `POST /auth/login` (`email`, `senha`) retornam `access_token`, `token_type`, `expires_at` e `usuario`.
+- `GET /auth/me`, `PATCH /auth/me` (`nome`, `email`), `POST /auth/change-password` (`senha_atual`, `nova_senha`) e `POST /auth/logout`.
+- `GET/PATCH /usuarios/me/preferencias`, com corpo `{ "preferencias": { "pref_novos_projetos": true, "pref_atualizacoes": true } }`. Preferências são JSON na tabela `usuario`.
+- `GET /notificacoes?page=1&per_page=20` e `PATCH /notificacoes/{id}/lida`.
+
+O header `X-User-Id` não autentica clientes em development/production; a compatibilidade legada fica limitada ao ambiente de teste automatizado. Senhas são armazenadas como hash PBKDF2-SHA256. O servidor persiste apenas o SHA-256 do token de sessão. A migration 006 precisa ser aplicada manualmente antes de usar as rotas de conta.
+
+As notificações in-app são produzidas no ETL somente para novos projetos importados com preferência ativada e para novas tramitações de projetos favoritados quando `pref_atualizacoes` está ligada. Reprocessamentos são idempotentes por índices únicos; não existe transporte de push/e-mail. O ETL de votações e comunicados gerais não está implementado, portanto essas preferências são recusadas se habilitadas.

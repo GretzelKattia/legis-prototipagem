@@ -16,7 +16,7 @@ from etl.load import MySQLLoader
 
 ROOT = Path(__file__).resolve().parents[2]
 MIGRATIONS = sorted((ROOT / "database" / "migrations").glob("*.sql"))
-MYSQL_URL = os.getenv("LEGIS_TEST_MYSQL_URL")
+MYSQL_URL = os.getenv("LEGIS_TEST_MYSQL_URL", "mysql+mysqlconnector://root:root@localhost:3306/legis")
 pytestmark = pytest.mark.skipif(not MYSQL_URL, reason="LEGIS_TEST_MYSQL_URL não configurado")
 
 

@@ -37,6 +37,17 @@ class Usuario(Base):
     atualizado_em: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utc_now, onupdate=utc_now
     )
+    preferencias_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+
+
+class SessaoUsuario(Base):
+    __tablename__ = "usuario_sessao"
+    token_hash: Mapped[str] = mapped_column(String(64), primary_key=True)
+    id_usuario: Mapped[int] = mapped_column(
+        UnsignedBigInteger, ForeignKey("usuario.id_usuario", ondelete="CASCADE")
+    )
+    criada_em: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    expira_em: Mapped[datetime] = mapped_column(DateTime, index=True)
 
 
 class ProjetoLei(Base):
@@ -170,3 +181,18 @@ class VerificacaoVigencia(Base):
     resposta_http: Mapped[int] = mapped_column(Integer)
     conteudo_sha256: Mapped[str] = mapped_column(String(64))
     verificada_em: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class Notificacao(Base):
+    __tablename__ = "notificacao"
+    id_notificacao: Mapped[int] = mapped_column(UnsignedBigInteger, primary_key=True, autoincrement=True)
+    id_usuario: Mapped[int] = mapped_column(UnsignedBigInteger, ForeignKey("usuario.id_usuario", ondelete="CASCADE"))
+    id_projeto: Mapped[int] = mapped_column(UnsignedBigInteger, ForeignKey("projeto_lei.id_projeto", ondelete="CASCADE"))
+    id_tramitacao: Mapped[int | None] = mapped_column(UnsignedBigInteger, ForeignKey("tramitacao.id_tramitacao", ondelete="SET NULL"), nullable=True)
+    tipo_evento: Mapped[str] = mapped_column(String(50))
+    titulo: Mapped[str] = mapped_column(String(200))
+    descricao: Mapped[str | None] = mapped_column(Text, nullable=True)
+    criada_em: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    lida_em: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    enviada_em: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    status_envio: Mapped[str] = mapped_column(String(30), default="PENDENTE")

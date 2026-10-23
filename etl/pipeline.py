@@ -7,7 +7,7 @@ import json
 import logging
 from pathlib import Path
 
-try:
+if __package__:
     from .extract import (
         CamaraExtractor,
         ExtractionConfig,
@@ -17,7 +17,7 @@ try:
     )
     from .load import MySQLLoader, db_config
     from .transform import transform_payload
-except ImportError:  # execução direta: python etl/pipeline.py
+else:  # execução direta: python etl/pipeline.py
     from extract import (
         CamaraExtractor,
         ExtractionConfig,

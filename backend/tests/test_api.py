@@ -166,3 +166,91 @@ def test_list_can_filter_by_derived_verified_vigency_status(client):
     body = response.json()
     assert body["meta"]["total"] == 1
     assert body["items"][0]["status"]["codigo"] == "VIGENCIA_VERIFICADA"
+
+
+def test_account_register_login_and_authenticated_favorites(client, monkeypatch):
+    created = client.post('/auth/register', json={
+        'nome': 'Nova Pessoa', 'email': 'Pessoa@Example.org', 'senha': 'Senha-forte-123'
+    })
+    assert created.status_code == 201
+    data = created.json()
+    assert data['usuario']['email'] == 'pessoa@example.org'
+    token = data['access_token']
+    assert client.get('/auth/me', headers={'Authorization': f'Bearer {token}'}).json()['nome'] == 'Nova Pessoa'
+    profile = client.patch('/auth/me', headers={'Authorization': f'Bearer {token}'}, json={
+        'nome': 'Nova Pessoa Atualizada', 'email': 'pessoa@example.org'
+    })
+    assert profile.status_code == 200
+    assert profile.json()['nome'] == 'Nova Pessoa Atualizada'
+    assert client.patch('/auth/me', headers={'Authorization': f'Bearer {token}'}, json={
+        'nome': 'Nova Pessoa', 'email': 'teste@example.org'
+    }).status_code == 409
+    assert client.post('/favoritos', json={'proposicao_id': 540979}, headers={'Authorization': f'Bearer {token}'}).status_code == 201
+    assert client.get('/favoritos', headers={'Authorization': f'Bearer {token}'}).json()['meta']['total'] == 1
+    from types import SimpleNamespace
+    from app.api import routes
+    monkeypatch.setattr(routes, 'get_settings', lambda: SimpleNamespace(environment='production', default_user_id=1))
+    assert client.get('/favoritos', headers={'Authorization': 'Bearer invalid'}).status_code == 401
+    assert client.get('/favoritos', headers={'X-User-Id': '1'}).status_code == 401
+    login = client.post('/auth/login', json={'email': 'PESSOA@example.org', 'senha': 'Senha-forte-123'})
+    assert login.status_code == 200
+    changed = client.post('/auth/change-password', headers={'Authorization': f'Bearer {token}'}, json={
+        'senha_atual': 'Senha-forte-123', 'nova_senha': 'Senha-nova-456'
+    })
+    assert changed.status_code == 204
+    assert client.get('/auth/me', headers={'Authorization': f'Bearer {token}'}).status_code == 200
+    assert client.post('/auth/login', json={'email': 'pessoa@example.org', 'senha': 'Senha-forte-123'}).status_code == 401
+    assert client.post('/auth/login', json={'email': 'pessoa@example.org', 'senha': 'Senha-nova-456'}).status_code == 200
+    assert client.post('/auth/login', json={'email': 'pessoa@example.org', 'senha': 'errada-123456'}).status_code == 401
+    assert client.post('/auth/register', json={'nome': 'Outra Pessoa', 'email': 'pessoa@example.org', 'senha': 'Senha-forte-123'}).status_code == 409
+    assert client.post('/auth/logout', headers={'Authorization': f'Bearer {token}'}).status_code == 204
+    assert client.get('/auth/me', headers={'Authorization': f'Bearer {token}'}).status_code == 401
+
+
+def test_preferences_are_saved_and_unsupported_sources_are_rejected(client):
+    token = client.post('/auth/register', json={
+        'nome': 'Preferência', 'email': 'preferencia@example.org', 'senha': 'Senha-forte-123'
+    }).json()['access_token']
+    headers = {'Authorization': f'Bearer {token}'}
+    before = client.get('/usuarios/me/preferencias', headers=headers).json()['preferencias']
+    assert before['pref_votacoes'] is False
+    response = client.patch('/usuarios/me/preferencias', headers=headers, json={'preferencias': {'pref_atualizacoes': False}})
+    assert response.status_code == 200
+    assert client.get('/usuarios/me/preferencias', headers=headers).json()['preferencias']['pref_atualizacoes'] is False
+    assert client.patch('/usuarios/me/preferencias', headers=headers, json={'preferencias': {'pref_votacoes': True}}).status_code == 422
+
+
+
+def test_notifications_are_scoped_and_marked_read(client):
+    from datetime import datetime
+    from conftest import TestingSession
+    from app.models import Notificacao
+    registered = client.post('/auth/register', json={
+        'nome': 'Notificações', 'email': 'avisos@example.org', 'senha': 'Senha-forte-123'
+    }).json()
+    token = registered['access_token']
+    user_id = registered['usuario']['id']
+    session = TestingSession()
+    try:
+        item = Notificacao(id_usuario=user_id, id_projeto=540979, id_tramitacao=1,
+                           tipo_evento='NOVA_TRAMITACAO', titulo='Atualização de teste',
+                           descricao='Descrição oficial', criada_em=datetime.utcnow(),
+                           status_envio='IN_APP')
+        session.add(item)
+        session.commit()
+        notification_id = item.id_notificacao
+    finally:
+        session.close()
+    headers = {'Authorization': f'Bearer {token}'}
+    result = client.get('/notificacoes', headers=headers).json()
+    assert result['meta']['total'] == 1
+    assert result['items'][0]['descricao'] == 'Descrição oficial'
+    assert client.patch(f'/notificacoes/{notification_id}/lida', headers=headers).status_code == 204
+    assert client.get('/notificacoes', headers=headers).json()['items'][0]['lida_em'] is not None
+    assert client.get('/notificacoes', headers={'X-User-Id': str(user_id)}).status_code == 401
+
+
+def test_search_accepts_official_author_name(client):
+    response = client.get('/proposicoes', params={'q': 'Félix Mendonça'})
+    assert response.status_code == 200
+    assert any(item['id'] == 540979 for item in response.json()['items'])
