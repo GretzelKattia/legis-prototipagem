@@ -4,8 +4,21 @@ from ..models import Autor, Favorito, ProjetoAutor, ProjetoLei, Tramitacao
 
 
 class ProposicaoRepository:
+    TOPIC_KEYWORDS = {
+        "Educação": ["educação", "escola", "ensino", "universidade", "professor", "estudante", "aprendizagem", "merenda"],
+        "Saúde": ["saúde", "hospital", "sus", "médico", "medicina", "doença", "vacina", "farmácia", "paciente"],
+        "Meio ambiente": ["meio ambiente", "ambiental", "clima", "floresta", "água", "sustentável", "sustentabilidade", "resíduo", "poluição"],
+        "Segurança pública": ["segurança pública", "polícia", "penal", "crime", "criminal", "violência", "arma", "presídio", "segurança"],
+        "Economia": ["economia", "econômico", "financeiro", "tributário", "imposto", "orçamento", "crédito", "mercado", "inflação"],
+        "Direitos humanos": ["direitos humanos", "igualdade", "discriminação", "racismo", "mulher", "idoso", "criança", "pessoa com deficiência", "minoria"],
+        "Trabalho": ["trabalho", "trabalhista", "emprego", "salário", "aposentadoria", "previdência", "sindicato", "jornada"],
+        "Tecnologia e inovação": ["tecnologia", "inovação", "internet", "digital", "dados", "inteligência artificial", "software", "ciência"],
+        "Infraestrutura": ["infraestrutura", "transporte", "rodovia", "ferrovia", "mobilidade", "habitação", "saneamento", "energia", "logística"],
+        "Justiça e cidadania": ["justiça", "cidadania", "constitucional", "judicial", "processo", "eleitoral", "lei", "direito"],
+    }
+
     def list(
-        self, db: Session, q=None, tipo=None, ano=None, status=None, page=1, per_page=20
+        self, db: Session, q=None, tipo=None, ano=None, status=None, tema=None, page=1, per_page=20
     ):
         stmt = select(ProjetoLei)
         if q:
@@ -20,6 +33,22 @@ class ProposicaoRepository:
             stmt = stmt.where(
                 or_(ProjetoLei.ementa.ilike(f"%{q}%"), ProjetoLei.numero == q, author_match)
             )
+        if tema:
+            keywords = self.TOPIC_KEYWORDS.get(tema, [])
+            if keywords:
+                topic_matches = [ProjetoLei.ementa.ilike(f"%{keyword}%") for keyword in keywords]
+                topic_matches.extend(
+                    exists(
+                        select(ProjetoAutor.id_projeto)
+                        .join(Autor, Autor.id_autor == ProjetoAutor.id_autor)
+                        .where(
+                            ProjetoAutor.id_projeto == ProjetoLei.id_projeto,
+                            Autor.nome.ilike(f"%{keyword}%"),
+                        )
+                    )
+                    for keyword in keywords
+                )
+                stmt = stmt.where(or_(*topic_matches))
         if tipo:
             stmt = stmt.where(ProjetoLei.sigla_tipo == tipo)
         if ano:

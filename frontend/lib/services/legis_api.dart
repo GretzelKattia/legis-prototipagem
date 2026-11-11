@@ -82,6 +82,7 @@ class LegisApi {
     String? tipo,
     String? ano,
     String? status,
+    String? tema,
     int page = 1,
     int perPage = 20,
   }) async {
@@ -90,6 +91,7 @@ class LegisApi {
     if (tipo != null && tipo.isNotEmpty) params['tipo'] = tipo;
     if (ano != null && ano.trim().isNotEmpty) params['ano'] = ano.trim();
     if (status != null && status.isNotEmpty) params['status'] = status;
+    if (tema != null && tema.trim().isNotEmpty) params['tema'] = tema.trim();
     final response = await _client.get('/proposicoes', query: params);
     final root = response is Map ? Map<String, dynamic>.from(response) : <String, dynamic>{};
     final rawItems = _items(response, ['items', 'results', 'proposicoes', 'data']);

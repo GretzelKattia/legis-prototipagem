@@ -12,6 +12,7 @@ import 'features/welcome/welcome_screen.dart';
 import 'services/legis_api.dart';
 import 'state/favorites_controller.dart';
 import 'state/theme_controller.dart';
+import 'state/topic_preferences_controller.dart';
 import 'state/user_controller.dart';
 
 class LegisApp extends StatefulWidget {
@@ -34,6 +35,9 @@ class _LegisAppState extends State<LegisApp> {
         ChangeNotifierProvider<UserController>(create: (_) => UserController()..load()),
         ChangeNotifierProvider<FavoritesController>(
           create: (_) => FavoritesController(_api)..load(),
+        ),
+        ChangeNotifierProvider<TopicPreferencesController>(
+          create: (_) => TopicPreferencesController()..load(),
         ),
       ],
       child: Consumer<ThemeController>(

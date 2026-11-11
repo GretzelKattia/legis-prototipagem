@@ -10,9 +10,7 @@ import '../legal/terms_policies_screen.dart';
 import '../onboarding/tutorial_screen.dart';
 import 'login_screen.dart';
 
-/// INTEGRAÇÃO BACK-END: POST /auth/register deve receber nome, e-mail e senha; validar
-/// duplicidade de e-mail e política de senha no servidor, retornar perfil/token e exigir
-/// confirmação de e-mail quando aplicável. Nunca armazenar senha em texto puro no app.
+/// O backend aplica as validações definitivas; esta tela antecipa a senha mínima.
 
 
 class RegisterScreen extends StatefulWidget {
@@ -143,7 +141,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         prefixIcon: const Icon(Icons.lock_outline_rounded),
                         suffixIcon: _visibilityToggle(_hidePassword, () => setState(() => _hidePassword = !_hidePassword)),
                       ),
-                      validator: (v) => (v ?? '').length < 6 ? 'A senha deve ter pelo menos 10 caracteres.' : null,
+                      validator: (v) => (v ?? '').length < 10 ? 'A senha deve ter pelo menos 10 caracteres.' : null,
                     ),
                     const SizedBox(height: 14),
                     TextFormField(

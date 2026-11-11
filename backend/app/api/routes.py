@@ -224,11 +224,12 @@ def list_props(
     tipo: str | None = Query(None, pattern=r"^[A-Za-z]{1,20}$"),
     ano: int | None = Query(None, ge=1900, le=2100),
     status_interno: str | None = Query(None, max_length=50, alias="status"),
+    tema: str | None = Query(None, max_length=80),
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db),
 ):
-    rows, total = repo.list(db, q, tipo, ano, status_interno, page, per_page)
+    rows, total = repo.list(db, q, tipo, ano, status_interno, tema, page, per_page)
     return {"items": [card(p) for p in rows], "meta": pagination(page, per_page, total)}
 
 

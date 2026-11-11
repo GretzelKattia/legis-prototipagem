@@ -9,6 +9,7 @@ import '../../models/proposition.dart';
 import '../../services/legis_api.dart';
 import '../../state/favorites_controller.dart';
 import '../preferences/preferences_screen.dart';
+import '../../state/topic_preferences_controller.dart';
 
 /// INTEGRAÇÃO BACK-END: alimentar a lista com GET /proposicoes, incluindo paginação,
 /// busca e filtros por tipo, ano, situação e normas aprovadas. Usar parâmetros definidos
@@ -24,7 +25,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final ScrollController _scrollController = ScrollController();
-  final List<String> _filters = const ['Todos', 'Favoritos', 'Em tramitação', 'Normas'];
+  final List<String> _filters = const ['Todos', 'Para você', 'Favoritos', 'Em tramitação', 'Normas'];
   List<Proposition> _items = [];
   String _filter = 'Todos';
   bool _loading = false;
@@ -104,9 +105,12 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final c = context.palette;
     final favoriteIds = context.watch<FavoritesController>().items.map((e) => e.id).toSet();
+    final topics = context.watch<TopicPreferencesController>();
     final visible = _filter == 'Favoritos'
         ? _items.where((item) => favoriteIds.contains(item.id)).toList()
-        : _items;
+        : _filter == 'Para você'
+            ? _items.where(topics.matches).toList()
+            : _items;
     final useDesktopGrid = MediaQuery.sizeOf(context).width >= 1400;
 
     return Scaffold(
@@ -125,7 +129,12 @@ class _HomeScreenState extends State<HomeScreen> {
                   children: [
                     Text('Proposições legislativas', style: Theme.of(context).textTheme.headlineMedium),
                     const SizedBox(height: 6),
-                    Text('Acompanhe temas e atualizações do Legislativo.', style: Theme.of(context).textTheme.bodyMedium),
+                    Text(
+                      topics.selectedTopics.isEmpty
+                          ? 'Acompanhe temas e atualizações do Legislativo.'
+                          : 'Acompanhe ${topics.selectedTopics.join(', ')} e outras atualizações.',
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
                     const SizedBox(height: 18),
                     SizedBox(
                       height: 37,
@@ -179,8 +188,18 @@ class _HomeScreenState extends State<HomeScreen> {
                 hasScrollBody: false,
                 child: EmptyView(
                   icon: _filter == 'Favoritos' ? Icons.bookmark_border : Icons.search_off_rounded,
-                  title: _filter == 'Favoritos' ? 'Você ainda não favoritou nenhuma proposição.' : 'Nenhuma proposição encontrada.',
-                  description: _filter == 'Favoritos' ? 'Toque no marcador de um card para salvar uma proposição.' : null,
+                  title: _filter == 'Favoritos'
+                      ? 'Você ainda não favoritou nenhuma proposição.'
+                      : _filter == 'Para você'
+                          ? 'Ainda não encontramos proposições dos seus temas.'
+                          : 'Nenhuma proposição encontrada.',
+                  description: _filter == 'Favoritos'
+                      ? 'Toque no marcador de um card para salvar uma proposição.'
+                      : _filter == 'Para você'
+                          ? topics.selectedTopics.isEmpty
+                              ? 'Escolha temas em Preferências para personalizar esta área.'
+                              : 'As recomendações usam o título, a ementa e o autor das proposições carregadas.'
+                          : null,
                 ),
               )
             else if (useDesktopGrid)

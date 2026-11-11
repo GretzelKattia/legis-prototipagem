@@ -130,11 +130,26 @@ class ApiClient {
     if (data is Map) {
       final detail = data['detail'] ?? data['message'] ?? data['mensagem'];
       if (detail is String && detail.trim().isNotEmpty) message = detail;
+      if (detail is List) {
+        final errors = detail.whereType<Map>().map((error) {
+          final location = error['loc'];
+          final field = location is List && location.isNotEmpty
+              ? location.last.toString()
+              : 'campo';
+          final description = error['msg']?.toString();
+          return description == null || description.isEmpty
+              ? field
+              : '$field: $description';
+        }).toList();
+        if (errors.isNotEmpty) message = errors.join('\n');
+      }
     }
     if (response.statusCode == 404) {
       message = 'Não foi possível encontrar as informações solicitadas.';
     } else if (response.statusCode == 422) {
-      message = 'Alguns filtros são inválidos. Revise os dados e tente novamente.';
+      if (message == 'Não foi possível concluir a solicitação.') {
+        message = 'Dados inválidos. Revise os campos e tente novamente.';
+      }
     } else if (response.statusCode >= 500) {
       message = 'O serviço está temporariamente indisponível. Tente novamente.';
     }

@@ -4,6 +4,7 @@ import '../../services/legis_api.dart';
 
 import '../../core/theme/app_theme.dart';
 import '../../state/theme_controller.dart';
+import '../../state/topic_preferences_controller.dart';
 
 /// INTEGRAÇÃO BACK-END: aparência pode continuar local. Preferências de notificações
 /// devem ser salvas na conta (GET/PATCH /usuarios/me/preferencias) e aplicadas também
@@ -92,6 +93,43 @@ class _PreferencesScreenState extends State<PreferencesScreen> {
                         RadioListTile<ThemeMode>(value: ThemeMode.system, groupValue: controller.mode, onChanged: (mode) { if (mode != null) controller.setMode(mode); }, title: const Text('Seguir o sistema do celular')),
                       ])),
                     ]))),
+                    const SizedBox(height: 14),
+                    Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(15),
+                        child: Consumer<TopicPreferencesController>(
+                          builder: (context, topics, _) => Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Temas de interesse', style: Theme.of(context).textTheme.titleMedium),
+                              const SizedBox(height: 5),
+                              Text(
+                                'Escolha assuntos para destacar proposições relacionadas na área “Para você”.',
+                                style: Theme.of(context).textTheme.bodyMedium,
+                              ),
+                              const SizedBox(height: 12),
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                children: TopicCatalog.topics.map((topic) => FilterChip(
+                                  label: Text(topic),
+                                  selected: topics.isSelected(topic),
+                                  onSelected: (selected) => topics.setSelected(topic, selected),
+                                  showCheckmark: true,
+                                )).toList(),
+                              ),
+                              const SizedBox(height: 9),
+                              Text(
+                                topics.selectedTopics.isEmpty
+                                    ? 'Nenhum tema selecionado.'
+                                    : '${topics.selectedTopics.length} tema(s) selecionado(s).',
+                                style: TextStyle(color: c.textSecondary, fontSize: 11.5),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
                     const SizedBox(height: 14),
                     Container(
                       padding: const EdgeInsets.all(12),

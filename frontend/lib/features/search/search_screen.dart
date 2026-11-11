@@ -10,6 +10,7 @@ import '../../core/widgets/proposition_card.dart';
 import '../../models/proposition.dart';
 import '../../services/legis_api.dart';
 import '../preferences/preferences_screen.dart';
+import '../../state/topic_preferences_controller.dart';
 
 /// INTEGRAÇÃO BACK-END: usar endpoint de pesquisa de proposições com termo, tipo, ano,
 /// situação e paginação. Aplicar debounce no campo de busca, cancelar/ignorar respostas
@@ -33,6 +34,7 @@ class _SearchScreenState extends State<SearchScreen> {
   String? _tipo;
   String? _ano;
   String? _status;
+  String? _topic;
   bool _hasSearched = false;
   int _requestId = 0;
   int _page = 0;
@@ -60,7 +62,7 @@ class _SearchScreenState extends State<SearchScreen> {
         _error = null;
         _loading = false;
       });
-      if (_tipo != null || _ano != null || _status != null) {
+      if (_tipo != null || _ano != null || _status != null || _topic != null) {
         _debounce = Timer(const Duration(milliseconds: 250), () => _search());
       }
       return;
@@ -69,7 +71,7 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   Future<void> _search({bool nextPage = false}) async {
-    if (_queryController.text.trim().isEmpty && _tipo == null && _ano == null && _status == null) return;
+    if (_queryController.text.trim().isEmpty && _tipo == null && _ano == null && _status == null && _topic == null) return;
     if (nextPage && (_loading || _page >= _totalPages)) return;
     final requestId = nextPage ? _requestId : ++_requestId;
     final targetPage = nextPage ? _page + 1 : 1;
@@ -85,6 +87,7 @@ class _SearchScreenState extends State<SearchScreen> {
             tipo: _tipo,
             ano: _ano,
             status: _status,
+            tema: _topic,
             page: targetPage,
             perPage: 20,
           );
@@ -147,7 +150,7 @@ class _SearchScreenState extends State<SearchScreen> {
                 onChanged: (value) => setSheetState(() => status = value),
               ),
               const SizedBox(height: 20),
-              Row(children: [Expanded(child: OutlinedButton(onPressed: () { setState(() { _tipo = null; _ano = null; _status = null; }); Navigator.pop(context); if (_queryController.text.trim().isEmpty) { _requestId++; setState(() { _items = []; _error = null; _hasSearched = false; _loading = false; }); } else { _search(); } }, child: const Text('Limpar'))), const SizedBox(width: 12), Expanded(child: FilledButton(onPressed: () { setState(() { _tipo = tipo; _ano = yearController.text.trim().isEmpty ? null : yearController.text.trim(); _status = status; }); Navigator.pop(context); _search(); }, child: const Text('Aplicar filtros')))]),
+              Row(children: [Expanded(child: OutlinedButton(onPressed: () { setState(() { _tipo = null; _ano = null; _status = null; _topic = null; }); Navigator.pop(context); if (_queryController.text.trim().isEmpty) { _requestId++; setState(() { _items = []; _error = null; _hasSearched = false; _loading = false; }); } else { _search(); } }, child: const Text('Limpar'))), const SizedBox(width: 12), Expanded(child: FilledButton(onPressed: () { setState(() { _tipo = tipo; _ano = yearController.text.trim().isEmpty ? null : yearController.text.trim(); _status = status; }); Navigator.pop(context); _search(); }, child: const Text('Aplicar filtros')))]),
             ],
           ),
         ),
@@ -206,14 +209,39 @@ class _SearchScreenState extends State<SearchScreen> {
                     child: IconButton(onPressed: _openFilters, icon: Icon(Icons.tune_rounded, color: c.onAction), tooltip: 'Filtros'),
                   ),
                 ]),
-                if (_tipo != null || _ano != null || activeStatus != null) ...[
+                if (_tipo != null || _ano != null || activeStatus != null || _topic != null) ...[
                   const SizedBox(height: 9),
                   Wrap(spacing: 7, children: [
                     if (_tipo != null) _FilterPill(label: _tipo!),
                     if (_ano != null) _FilterPill(label: _ano!),
                     if (activeStatus != null) _FilterPill(label: activeStatus.replaceAll('_', ' ').toLowerCase()),
+                    if (_topic != null) _FilterPill(label: 'Tema: $_topic'),
                   ]),
                 ],
+                const SizedBox(height: 11),
+                Text('Pesquisar por tema', style: TextStyle(color: c.textSecondary, fontSize: 11.5, fontWeight: FontWeight.w700)),
+                const SizedBox(height: 7),
+                SizedBox(
+                  height: 35,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: TopicCatalog.topics.length,
+                    separatorBuilder: (_, __) => const SizedBox(width: 7),
+                    itemBuilder: (context, index) {
+                      final topic = TopicCatalog.topics[index];
+                      return FilterChip(
+                        label: Text(topic),
+                        selected: _topic == topic,
+                        onSelected: (_) {
+                          setState(() => _topic = _topic == topic ? null : topic);
+                          _search();
+                        },
+                        showCheckmark: false,
+                        visualDensity: VisualDensity.compact,
+                      );
+                    },
+                  ),
+                ),
               ],
             ),
           ),
@@ -223,7 +251,7 @@ class _SearchScreenState extends State<SearchScreen> {
                 : _error != null && _items.isEmpty
                     ? EmptyView(icon: Icons.cloud_off_outlined, title: 'Não foi possível realizar a pesquisa', description: _error, actionLabel: 'Tentar novamente', onAction: () => _search())
                     : !_hasSearched
-                        ? const EmptyView(icon: Icons.search_rounded, title: 'Digite um termo ou escolha filtros para começar.', description: 'Você pode refinar a busca com os filtros de tipo, ano e situação.')
+                        ? const EmptyView(icon: Icons.search_rounded, title: 'Digite um termo ou escolha filtros para começar.', description: 'Você pode refinar a busca por tema, tipo, ano e situação.')
                         : _items.isEmpty
                             ? const EmptyView(icon: Icons.search_off_rounded, title: 'Nenhuma proposição corresponde aos filtros informados.')
                             : RefreshIndicator(
