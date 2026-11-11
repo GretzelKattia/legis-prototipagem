@@ -27,7 +27,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     try {
       final items = await context.read<LegisApi>().getNotifications();
       if (!mounted) return;
-      setState(() => _items = items);
+      setState(() => _items = items.where((item) => !item.isRead).toList());
     } catch (error) {
       if (mounted) setState(() => _error = error.toString());
     } finally {
@@ -39,9 +39,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     if (!item.isRead) {
       try {
         await context.read<LegisApi>().markNotificationRead(item.id);
-        if (mounted) setState(() {
-          _items = _items.map((n) => n.id == item.id ? n.copyWith(isRead: true) : n).toList();
-        });
+        if (mounted) setState(() => _items.removeWhere((n) => n.id == item.id));
       } catch (error) {
         if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Não foi possível marcar como lida: $error')));
       }
@@ -80,8 +78,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                       if (_items.isEmpty)
                         Padding(padding: const EdgeInsets.symmetric(vertical: 50), child: Column(children: [
                           Icon(Icons.notifications_none_rounded, color: c.textSecondary, size: 38),
-                          const SizedBox(height: 12), Text('Nenhuma notificação disponível.', style: Theme.of(context).textTheme.titleMedium),
-                          const SizedBox(height: 6), Text('Novos avisos só aparecem quando o ETL registra proposições ou tramitações e suas preferências permitem.', textAlign: TextAlign.center, style: Theme.of(context).textTheme.bodyMedium),
+                          const SizedBox(height: 12), Text('Nenhuma notificação não lida.', style: Theme.of(context).textTheme.titleMedium),
+                          const SizedBox(height: 6), Text('Quando o ETL registrar novas proposições ou tramitações, os avisos aparecerão aqui.', textAlign: TextAlign.center, style: Theme.of(context).textTheme.bodyMedium),
                         ]))
                       else ..._items.map((item) => Padding(
                         padding: const EdgeInsets.only(bottom: 10),

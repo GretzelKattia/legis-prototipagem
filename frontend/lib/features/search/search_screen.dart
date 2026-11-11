@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/theme/app_theme.dart';
@@ -123,16 +124,16 @@ class _SearchScreenState extends State<SearchScreen> {
               Row(children: [Text('Filtros de pesquisa', style: Theme.of(context).textTheme.headlineMedium), const Spacer(), IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close))]),
               const SizedBox(height: 17),
               DropdownButtonFormField<String>(
-                value: tipo,
+                initialValue: tipo,
                 decoration: const InputDecoration(labelText: 'Tipo de proposição'),
                 items: const [DropdownMenuItem(value: null, child: Text('Todos os tipos')), DropdownMenuItem(value: 'PL', child: Text('Projeto de Lei (PL)')), DropdownMenuItem(value: 'PEC', child: Text('Proposta de Emenda (PEC)')), DropdownMenuItem(value: 'PLP', child: Text('Projeto de Lei Complementar (PLP)')), DropdownMenuItem(value: 'MPV', child: Text('Medida Provisória (MPV)')), DropdownMenuItem(value: 'PDL', child: Text('Projeto de Decreto Legislativo (PDL)')), DropdownMenuItem(value: 'PRC', child: Text('Projeto de Resolução (PRC)'))],
                 onChanged: (value) => setSheetState(() => tipo = value),
               ),
               const SizedBox(height: 12),
-              TextField(controller: yearController, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Ano', hintText: 'Ex.: 2024')),
+              TextField(controller: yearController, keyboardType: TextInputType.number, inputFormatters: [FilteringTextInputFormatter.digitsOnly], decoration: const InputDecoration(labelText: 'Ano', hintText: 'Ex.: 2024')),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
-                value: status,
+                initialValue: status,
                 decoration: const InputDecoration(labelText: 'Situação'),
                 items: const [
                   DropdownMenuItem(value: null, child: Text('Todas as situações')),
@@ -150,7 +151,17 @@ class _SearchScreenState extends State<SearchScreen> {
                 onChanged: (value) => setSheetState(() => status = value),
               ),
               const SizedBox(height: 20),
-              Row(children: [Expanded(child: OutlinedButton(onPressed: () { setState(() { _tipo = null; _ano = null; _status = null; _topic = null; }); Navigator.pop(context); if (_queryController.text.trim().isEmpty) { _requestId++; setState(() { _items = []; _error = null; _hasSearched = false; _loading = false; }); } else { _search(); } }, child: const Text('Limpar'))), const SizedBox(width: 12), Expanded(child: FilledButton(onPressed: () { setState(() { _tipo = tipo; _ano = yearController.text.trim().isEmpty ? null : yearController.text.trim(); _status = status; }); Navigator.pop(context); _search(); }, child: const Text('Aplicar filtros')))]),
+              Row(children: [Expanded(child: OutlinedButton(onPressed: () { setState(() { _tipo = null; _ano = null; _status = null; _topic = null; }); Navigator.pop(context); if (_queryController.text.trim().isEmpty) { _requestId++; setState(() { _items = []; _error = null; _hasSearched = false; _loading = false; }); } else { _search(); } }, child: const Text('Limpar'))), const SizedBox(width: 12), Expanded(child: FilledButton(onPressed: () {
+                final yearText = yearController.text.trim();
+                final year = int.tryParse(yearText);
+                if (yearText.isNotEmpty && (year == null || year < 1900 || year > 2100)) {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Informe um ano entre 1900 e 2100.')));
+                  return;
+                }
+                setState(() { _tipo = tipo; _ano = yearText.isEmpty ? null : yearText; _status = status; });
+                Navigator.pop(context);
+                _search();
+              }, child: const Text('Aplicar filtros')))]),
             ],
           ),
         ),

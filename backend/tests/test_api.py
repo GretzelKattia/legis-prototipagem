@@ -254,3 +254,19 @@ def test_search_accepts_official_author_name(client):
     response = client.get('/proposicoes', params={'q': 'Félix Mendonça'})
     assert response.status_code == 200
     assert any(item['id'] == 540979 for item in response.json()['items'])
+
+
+def test_search_filters_by_topic_and_rejects_unknown_topics(client):
+    from app.db import SessionLocal
+    from app.models import ProjetoLei
+
+    with SessionLocal() as db:
+        project = db.get(ProjetoLei, 540979)
+        project.ementa = "Projeto de proteção do meio ambiente"
+        db.commit()
+
+    response = client.get('/proposicoes', params={'tema': 'Meio ambiente'})
+    assert response.status_code == 200
+    assert response.json()['meta']['total'] == 1
+    assert response.json()['items'][0]['id'] == 540979
+    assert client.get('/proposicoes', params={'tema': 'Tema inexistente'}).status_code == 422

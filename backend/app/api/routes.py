@@ -229,6 +229,8 @@ def list_props(
     per_page: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db),
 ):
+    if tema is not None and tema not in repo.TOPIC_KEYWORDS:
+        raise HTTPException(422, "Tema inválido")
     rows, total = repo.list(db, q, tipo, ano, status_interno, tema, page, per_page)
     return {"items": [card(p) for p in rows], "meta": pagination(page, per_page, total)}
 
