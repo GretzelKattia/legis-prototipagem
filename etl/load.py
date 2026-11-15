@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import unicodedata
 import uuid
 from contextlib import contextmanager
 from datetime import datetime, timezone
@@ -25,6 +26,41 @@ INSERT INTO etl_execucoes
    coleta_parcial, avisos_json)
 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
 """
+
+
+TOPIC_KEYWORDS = {
+    "Educação": ["educação", "escola", "ensino", "universidade", "professor", "estudante", "aprendizagem", "merenda"],
+    "Saúde": ["saúde", "hospital", "sus", "médico", "medicina", "doença", "vacina", "farmácia", "paciente"],
+    "Meio ambiente": ["meio ambiente", "ambiental", "clima", "floresta", "água", "sustentável", "sustentabilidade", "resíduo", "poluição"],
+    "Segurança pública": ["segurança pública", "polícia", "penal", "crime", "criminal", "violência", "arma", "presídio", "segurança"],
+    "Economia": ["economia", "econômico", "financeiro", "tributário", "imposto", "orçamento", "crédito", "mercado", "inflação"],
+    "Direitos humanos": ["direitos humanos", "igualdade", "discriminação", "racismo", "mulher", "idoso", "criança", "pessoa com deficiência", "minoria"],
+    "Trabalho": ["trabalho", "trabalhista", "emprego", "salário", "aposentadoria", "previdência", "sindicato", "jornada"],
+    "Tecnologia e inovação": ["tecnologia", "inovação", "internet", "digital", "dados", "inteligência artificial", "software", "ciência"],
+    "Infraestrutura": ["infraestrutura", "transporte", "rodovia", "ferrovia", "mobilidade", "habitação", "saneamento", "energia", "logística"],
+    "Justiça e cidadania": ["justiça", "cidadania", "constitucional", "judicial", "processo", "eleitoral", "lei", "direito"],
+}
+
+
+def _normalize_topic_text(value: Any) -> str:
+    text = unicodedata.normalize("NFKD", str(value or ""))
+    return "".join(char for char in text if not unicodedata.combining(char)).lower()
+
+
+def matching_topics(record: dict[str, Any]) -> list[str]:
+    authors = " ".join(
+        str(author.get("nome", ""))
+        for author in (record.get("autores") or [])
+        if isinstance(author, dict)
+    )
+    searchable = _normalize_topic_text(
+        " ".join(str(record.get(key, "")) for key in ("titulo", "ementa", "descricao"))
+        + " " + authors
+    )
+    return [
+        topic for topic, keywords in TOPIC_KEYWORDS.items()
+        if any(_normalize_topic_text(keyword) in searchable for keyword in keywords)
+    ]
 
 
 class MySQLLoader:
@@ -344,19 +380,40 @@ class MySQLLoader:
 
     @classmethod
     def _notify_new_project(cls, cursor: Any, record: dict[str, Any]) -> None:
-        users = cls._notification_users(
-            cursor,
-            "SELECT id_usuario, preferencias_json FROM usuario",
-            (),
-            ("pref_novos_projetos",),
-        )
+        cursor.execute("SELECT id_usuario, preferencias_json, temas_json FROM usuario")
+        rows = cursor.fetchall()
+        matched = set(matching_topics(record))
         title = f"Nova proposição: {record.get('sigla_tipo', '')} {record.get('numero', '')}/{record.get('ano', '')}".strip()
         description = record.get("ementa")
-        for user_id in users:
-            cursor.execute(
-                "INSERT IGNORE INTO notificacao (id_usuario,id_projeto,tipo_evento,titulo,descricao,status_envio) VALUES (%s,%s,'NOVA_PROPOSICAO',%s,%s,'IN_APP')",
-                (user_id, record["id_projeto"], title[:200], description),
-            )
+        for row in rows:
+            user_id = int(row[0])
+            prefs = row[1]
+            topics = row[2] if len(row) > 2 else []
+            if isinstance(prefs, (str, bytes, bytearray)):
+                try:
+                    prefs = json.loads(prefs.decode() if isinstance(prefs, (bytes, bytearray)) else prefs)
+                except (json.JSONDecodeError, UnicodeDecodeError):
+                    prefs = {}
+            if isinstance(topics, (str, bytes, bytearray)):
+                try:
+                    topics = json.loads(topics.decode() if isinstance(topics, (bytes, bytearray)) else topics)
+                except (json.JSONDecodeError, UnicodeDecodeError):
+                    topics = []
+            if not isinstance(prefs, dict) or prefs.get("pref_novos_projetos") is not True:
+                continue
+            selected = [topic for topic in topics if topic in matched] if isinstance(topics, list) else []
+            if selected:
+                topic_label = ", ".join(selected)
+                topic_title = f"{title} — tema: {topic_label}"
+                cursor.execute(
+                    "INSERT IGNORE INTO notificacao (id_usuario,id_projeto,tipo_evento,titulo,descricao,status_envio) VALUES (%s,%s,'NOVA_PROPOSICAO_TEMA',%s,%s,'IN_APP')",
+                    (user_id, record["id_projeto"], topic_title[:200], description),
+                )
+            elif not topics:
+                cursor.execute(
+                    "INSERT IGNORE INTO notificacao (id_usuario,id_projeto,tipo_evento,titulo,descricao,status_envio) VALUES (%s,%s,'NOVA_PROPOSICAO',%s,%s,'IN_APP')",
+                    (user_id, record["id_projeto"], title[:200], description),
+                )
 
     @classmethod
     def _notify_new_tramitation(cls, cursor: Any, record: dict[str, Any], tram: dict[str, Any], tramitacao_id: int) -> None:

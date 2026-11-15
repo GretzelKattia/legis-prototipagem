@@ -150,6 +150,18 @@ DEFAULT_PREFERENCES = {
 }
 PREFERENCE_KEYS = set(DEFAULT_PREFERENCES)
 UNSUPPORTED_PREFERENCES = {"pref_votacoes", "pref_outras"}
+TOPIC_CATALOG = {
+    "Educação",
+    "Saúde",
+    "Meio ambiente",
+    "Segurança pública",
+    "Economia",
+    "Direitos humanos",
+    "Trabalho",
+    "Tecnologia e inovação",
+    "Infraestrutura",
+    "Justiça e cidadania",
+}
 
 
 @router.get("/usuarios/me/preferencias")
@@ -175,6 +187,23 @@ def patch_preferences(body: PreferencesIn, user: Usuario = Depends(get_current_u
     user.preferencias_json = values
     db.commit()
     return {"preferencias": values}
+
+
+@router.get("/usuarios/me/temas", response_model=TopicsOut)
+def get_topics(user: Usuario = Depends(get_current_user)):
+    saved = user.temas_json if isinstance(user.temas_json, list) else []
+    return {"temas": [topic for topic in saved if topic in TOPIC_CATALOG]}
+
+
+@router.patch("/usuarios/me/temas", response_model=TopicsOut)
+def patch_topics(body: TopicsIn, user: Usuario = Depends(get_current_user), db: Session = Depends(get_db)):
+    topics = list(dict.fromkeys(topic.strip() for topic in body.temas if isinstance(topic, str) and topic.strip()))
+    unknown = set(topics) - TOPIC_CATALOG
+    if unknown:
+        raise HTTPException(422, f"Temas desconhecidos: {', '.join(sorted(unknown))}")
+    user.temas_json = topics
+    db.commit()
+    return {"temas": topics}
 
 
 @router.get("/notificacoes")
@@ -229,8 +258,6 @@ def list_props(
     per_page: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db),
 ):
-    if tema is not None and tema not in repo.TOPIC_KEYWORDS:
-        raise HTTPException(422, "Tema inválido")
     rows, total = repo.list(db, q, tipo, ano, status_interno, tema, page, per_page)
     return {"items": [card(p) for p in rows], "meta": pagination(page, per_page, total)}
 

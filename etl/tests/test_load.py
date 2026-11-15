@@ -156,6 +156,21 @@ def test_new_project_notifications_use_real_record_and_saved_user_preference():
     assert inserts[0][1][3] == record["ementa"]
 
 
+def test_new_project_theme_notification_uses_selected_topic():
+    import json
+    record = {**project_record(), "ementa": "Programa nacional de educação e ensino público"}
+    cursor = CursorDouble([
+        (7, json.dumps({"pref_novos_projetos": True}), json.dumps(["Educação"])),
+        (8, json.dumps({"pref_novos_projetos": True}), json.dumps(["Saúde"])),
+    ])
+    MySQLLoader._notify_new_project(cursor, record)
+    inserts = [(sql, params) for sql, params in cursor.executed if "INSERT IGNORE INTO notificacao" in sql]
+    assert len(inserts) == 1
+    assert "NOVA_PROPOSICAO_TEMA" in inserts[0][0]
+    assert inserts[0][1][0] == 7
+    assert "Educação" in inserts[0][1][2]
+
+
 def test_favorite_tramitation_notifications_use_only_subscribed_user_and_official_description():
     import json
     cursor = CursorDouble([

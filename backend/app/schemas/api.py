@@ -170,6 +170,14 @@ class PreferencesIn(BaseModel):
     preferencias: dict[str, bool]
 
 
+class TopicsIn(BaseModel):
+    temas: list[str] = Field(default_factory=list, max_length=20)
+
+
+class TopicsOut(BaseModel):
+    temas: list[str]
+
+
 class NotificationOut(BaseModel):
     id: int
     proposicao_id: int

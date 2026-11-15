@@ -36,6 +36,8 @@ O ETL precisa do schema e da tabela de controle de execuções no MySQL. No MySQ
 3. `database/migrations/003_add_etl_metadata.sql`
 4. `database/migrations/004_tramitacao_unique_nonnull.sql`
 5. `database/migrations/005_legal_evidence.sql`
+6. `database/migrations/006_user_sessions_and_preferences.sql`
+7. `database/migrations/007_user_topics.sql`
 
 As migrations criam o banco `legis` e as tabelas necessárias. *(Opcional, mas recomendado)* Depois de executá-las, insira um usuário administrador padrão para habilitar a funcionalidade de "Favoritar" projetos de lei no Frontend:
 

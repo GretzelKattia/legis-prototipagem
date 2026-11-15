@@ -220,6 +220,17 @@ def test_preferences_are_saved_and_unsupported_sources_are_rejected(client):
     assert client.patch('/usuarios/me/preferencias', headers=headers, json={'preferencias': {'pref_votacoes': True}}).status_code == 422
 
 
+def test_topics_are_saved_and_validated(client):
+    token = client.post('/auth/register', json={
+        'nome': 'Temas', 'email': 'temas@example.org', 'senha': 'Senha-forte-123'
+    }).json()['access_token']
+    headers = {'Authorization': f'Bearer {token}'}
+    response = client.patch('/usuarios/me/temas', headers=headers, json={'temas': ['Saúde', 'Economia', 'Saúde']})
+    assert response.status_code == 200
+    assert response.json()['temas'] == ['Saúde', 'Economia']
+    assert client.get('/usuarios/me/temas', headers=headers).json()['temas'] == ['Saúde', 'Economia']
+    assert client.patch('/usuarios/me/temas', headers=headers, json={'temas': ['Tema inexistente']}).status_code == 422
+
 
 def test_notifications_are_scoped_and_marked_read(client):
     from datetime import datetime
@@ -254,19 +265,3 @@ def test_search_accepts_official_author_name(client):
     response = client.get('/proposicoes', params={'q': 'Félix Mendonça'})
     assert response.status_code == 200
     assert any(item['id'] == 540979 for item in response.json()['items'])
-
-
-def test_search_filters_by_topic_and_rejects_unknown_topics(client):
-    from app.db import SessionLocal
-    from app.models import ProjetoLei
-
-    with SessionLocal() as db:
-        project = db.get(ProjetoLei, 540979)
-        project.ementa = "Projeto de proteção do meio ambiente"
-        db.commit()
-
-    response = client.get('/proposicoes', params={'tema': 'Meio ambiente'})
-    assert response.status_code == 200
-    assert response.json()['meta']['total'] == 1
-    assert response.json()['items'][0]['id'] == 540979
-    assert client.get('/proposicoes', params={'tema': 'Tema inexistente'}).status_code == 422

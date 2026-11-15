@@ -33,6 +33,7 @@ class Usuario(Base):
     email: Mapped[str] = mapped_column(String(255), unique=True)
     senha_hash: Mapped[str] = mapped_column(String(255), default="local")
     tutorial_concluido: Mapped[bool] = mapped_column(Boolean, default=False)
+    temas_json: Mapped[list | None] = mapped_column(JSON, nullable=True)
     criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
     atualizado_em: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utc_now, onupdate=utc_now

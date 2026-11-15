@@ -73,5 +73,12 @@ class TopicPreferencesController extends ChangeNotifier {
     await prefs.setStringList(_storageKey, _selected.toList()..sort());
   }
 
+  Future<void> replaceSelected(Iterable<String> topics) async {
+    _selected = topics.where(TopicCatalog.topics.contains).toSet();
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList(_storageKey, _selected.toList()..sort());
+  }
+
   bool matches(Proposition proposition) => TopicCatalog.matches(proposition, _selected);
 }

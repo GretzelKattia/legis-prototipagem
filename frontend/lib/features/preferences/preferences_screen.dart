@@ -40,6 +40,12 @@ class _PreferencesScreenState extends State<PreferencesScreen> {
       if (!mounted) return;
       // Salva defaults da conta antiga se ainda não havia um mapa no banco.
       final persisted = await api.updatePreferences(loaded);
+      try {
+        final remoteTopics = await api.getTopics();
+        await context.read<TopicPreferencesController>().replaceSelected(remoteTopics);
+      } catch (_) {
+        // Mantém a seleção local enquanto uma instalação antiga não aplicar a migration 007.
+      }
       if (!mounted) return;
       setState(() { _values = persisted; _ready = true; });
     } catch (error) {
@@ -55,6 +61,18 @@ class _PreferencesScreenState extends State<PreferencesScreen> {
       if (mounted) setState(() => _values = updated);
     } catch (error) {
       if (mounted) setState(() { _values = {..._values, key: previous}; _error = error.toString(); });
+    }
+  }
+
+  Future<void> _updateTopic(TopicPreferencesController topics, String topic, bool selected) async {
+    final previous = topics.selectedTopics;
+    await topics.setSelected(topic, selected);
+    try {
+      final saved = await context.read<LegisApi>().updateTopics(topics.selectedTopics);
+      await topics.replaceSelected(saved);
+    } catch (error) {
+      await topics.replaceSelected(previous);
+      if (mounted) setState(() => _error = error.toString());
     }
   }
 
@@ -104,7 +122,7 @@ class _PreferencesScreenState extends State<PreferencesScreen> {
                               Text('Temas de interesse', style: Theme.of(context).textTheme.titleMedium),
                               const SizedBox(height: 5),
                               Text(
-                                'Escolha assuntos para destacar proposições relacionadas na área “Para você”.',
+                                'Escolha assuntos para destacar proposições relacionadas e receber avisos internos após a sincronização do ETL.',
                                 style: Theme.of(context).textTheme.bodyMedium,
                               ),
                               const SizedBox(height: 12),
@@ -114,7 +132,7 @@ class _PreferencesScreenState extends State<PreferencesScreen> {
                                 children: TopicCatalog.topics.map((topic) => FilterChip(
                                   label: Text(topic),
                                   selected: topics.isSelected(topic),
-                                  onSelected: (selected) => topics.setSelected(topic, selected),
+                                  onSelected: (selected) => _updateTopic(topics, topic, selected),
                                   showCheckmark: true,
                                 )).toList(),
                               ),

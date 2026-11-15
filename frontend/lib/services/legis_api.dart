@@ -60,6 +60,18 @@ class LegisApi {
     return Map<String, dynamic>.from(response['preferencias'] as Map).map((key, value) => MapEntry(key, value == true));
   }
 
+  Future<List<String>> getTopics() async {
+    final response = await _client.get('/usuarios/me/temas');
+    if (response is! Map || response['temas'] is! List) throw Exception('Resposta inválida ao carregar temas.');
+    return (response['temas'] as List).map((value) => value.toString()).toList(growable: false);
+  }
+
+  Future<List<String>> updateTopics(Iterable<String> topics) async {
+    final response = await _client.patch('/usuarios/me/temas', body: {'temas': topics.toList(growable: false)});
+    if (response is! Map || response['temas'] is! List) throw Exception('Resposta inválida ao salvar temas.');
+    return (response['temas'] as List).map((value) => value.toString()).toList(growable: false);
+  }
+
   Future<List<LegisNotification>> getNotifications() async {
     final all = <LegisNotification>[];
     var page = 1;

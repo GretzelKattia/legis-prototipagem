@@ -41,7 +41,7 @@ class LegisNotification {
     final description = '${json['descricao'] ?? ''}'.trim();
     return LegisNotification(
       id: id,
-      icon: type == 'NOVA_PROPOSICAO' ? Icons.library_books_outlined : Icons.update_rounded,
+      icon: type == 'NOVA_PROPOSICAO_TEMA' ? Icons.topic_outlined : (type == 'NOVA_PROPOSICAO' ? Icons.library_books_outlined : Icons.update_rounded),
       title: title,
       summary: description,
       content: description,
